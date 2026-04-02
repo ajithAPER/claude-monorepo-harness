@@ -24,11 +24,6 @@ dist/
 # Test / coverage
 coverage/
 
-# Yarn Berry
-.yarn/*
-!.yarn/releases
-!.yarn/plugins
-
 # code-memory daemon
 .code-memory.db
 .code-memory.sock

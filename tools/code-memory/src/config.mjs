@@ -26,7 +26,7 @@ export const IGNORE_DIRS = [
   'node_modules',
   'target',
   'vendor',
-  '.yarn',
+  '.pnpm-store',
   'dist',
   'build',
   '.next',

@@ -221,7 +221,7 @@ All data is stored under `~/.code-memory/`:
 All source files use `.mjs` with JSDoc-based type annotations. No build step.
 
 ```bash
-yarn workspace code-memory test     # Run unit tests (vitest)
+pnpm --filter code-memory test      # Run unit tests (vitest)
 node tools/code-memory/src/cli.mjs  # Run CLI directly
 ```
 

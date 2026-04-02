@@ -5,22 +5,30 @@
   "author": "Claude Code",
   "license": "MIT",
   "type": "module",
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "pnpm@10.33.0",
   "workspaces": [
     "tools/*",
     "common/*",
     "products/*/apps/*"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach -Apt run build",
-    "check": "yarn workspaces foreach -Apt run check",
-    "test": "yarn workspaces foreach -Apt run test",
-    "constraints": "yarn constraints",
-    "constraints:fix": "yarn constraints --fix"
+    "build": "pnpm -r run build",
+    "check": "pnpm -r run check",
+    "test": "pnpm -r run test"
   },
   "devDependencies": {
     "@typescript/native-preview": "latest",
-    "@yarnpkg/types": "^4.0.1",
     "vitest": "^3.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "tree-sitter",
+      "tree-sitter-go",
+      "tree-sitter-javascript",
+      "tree-sitter-rust",
+      "tree-sitter-typescript"
+    ]
   }
 }

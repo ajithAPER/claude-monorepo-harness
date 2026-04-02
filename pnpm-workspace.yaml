@@ -1,0 +1,4 @@
+packages:
+  - "tools/*"
+  - "common/*"
+  - "products/*/apps/*"

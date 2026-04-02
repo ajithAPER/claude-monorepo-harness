@@ -32,7 +32,7 @@ See [CLAUDE.md](CLAUDE.md) for the full system documentation used as agent instr
 ## Prerequisites
 
 - **Node.js** 20+
-- **Yarn** 4 (Berry) — the repo uses `packageManager: yarn@4.12.0`
+- **PNPM** 10+ — the repo uses `packageManager: pnpm@10.33.0`
 - **Claude Code CLI** — for running agent sessions (`npm install -g @anthropic-ai/claude-code`)
 - **Git** 2.28+ (for worktree support)
 
@@ -44,7 +44,7 @@ git clone <repo-url> claude-monorepo-harness
 cd claude-monorepo-harness
 
 # Install dependencies
-yarn install
+pnpm install
 
 # Install git hooks (Conventional Commits enforcement, secret detection)
 bash scripts/hooks-install.sh
@@ -76,7 +76,7 @@ claude-monorepo-harness/
 ├── tools/
 │   └── code-memory/     # Custom codebase knowledge graph tool
 ├── CLAUDE.md            # Agent instructions and full system documentation
-└── package.json         # Yarn 4 workspaces, MIT license
+└── package.json         # PNPM workspaces, MIT license
 ```
 
 ## Task System
@@ -190,10 +190,10 @@ products/
 └── my-product/
     ├── CLAUDE.md          # Product-specific agent instructions
     └── apps/
-        └── web/           # Yarn workspace (products/*/apps/*)
+        └── web/           # PNPM workspace (products/*/apps/*)
 ```
 
-Workspace globs in `package.json`: `tools/*`, `common/*`, `products/*/apps/*`
+Workspace globs in `pnpm-workspace.yaml`: `tools/*`, `common/*`, `products/*/apps/*`
 
 ## Contributing
 

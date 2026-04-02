@@ -70,6 +70,11 @@
 **Rationale:** Matches the bash-native, zero-dependency philosophy of the existing scripts. Hook managers add npm dependencies and configuration complexity. The hooks are simple enough that a copy-based installer is sufficient.
 **Trade-off:** No parallel hook execution, no built-in lint-staged integration. These can be added later if needed.
 
+## 2026-04-02: Migrate package manager from Yarn 4 to PNPM
+**Decision:** Replace Yarn 4 (Berry) with PNPM 10 as the monorepo package manager.
+**Rationale:** PNPM has stronger defaults for monorepos, faster installs via content-addressable global store, and cleaner workspace tooling (`pnpm -r run`). Yarn 4 Berry had unnecessary complexity for this use case (no PnP, no constraints needed yet). PNPM's `node-linker=hoisted` setting preserves the flat `node_modules` layout required by native addons (`better-sqlite3`, `tree-sitter`).
+**Trade-off:** Loses Yarn's `constraints` feature (version consistency enforcement across workspaces), but this can be replaced with `syncpack` if needed. PNPM's `onlyBuiltDependencies` setting in `package.json` is required to allow native addon build scripts, which is a slight increase in configuration surface.
+
 ## 2026-04-02: Platform-independent workflows with pluggable adapters
 **Decision:** Git workflow scripts never hard-depend on platform-specific CLIs (`gh`, `glab`, etc.). Platform integration is pluggable via `scripts/git-platform.sh` which auto-detects the hosting platform and falls back to manual instructions.
 **Rationale:** The monorepo harness must be forkable to any Git hosting platform (GitHub, GitLab, Bitbucket, self-hosted, etc.). Hard-coding `gh` would break portability.

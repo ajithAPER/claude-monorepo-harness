@@ -16,7 +16,7 @@
       "Bash(npx code-memory:*)",
       "Bash(npx vitest:*)",
       "Bash(node:*)",
-      "Bash(yarn:*)",
+      "Bash(pnpm:*)",
       "Bash(chmod:*)",
       "Bash(ls:*)",
       "Bash(mkdir:*)"
