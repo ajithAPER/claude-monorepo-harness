@@ -8,7 +8,7 @@ user-invocable: true
 
 ## Steps
 
-1. **Understand the feature**: Read the user's description. If unclear, ask clarifying questions about scope, products involved, and constraints.
+1. **Understand the feature**: If requirements haven't been gathered yet, invoke `/requirements` first to run a structured elicitation conversation. If a requirements summary already exists (from a prior `/requirements` invocation or a detailed user spec), use it as the primary input for decomposition.
 
 2. **Explore the codebase**: Use subagents to understand:
    - Which products/directories are involved

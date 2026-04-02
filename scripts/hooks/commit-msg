@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Managed by claude-monorepo-harness hooks-install.sh — do not edit directly
+# Validates commit messages against Conventional Commits format.
+# Format: type(scope)?: description
+# Types: feat, fix, docs, style, refactor, test, chore, ci, perf, build
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Skip merge commits
+if echo "$COMMIT_MSG" | grep -qE "^Merge "; then
+  exit 0
+fi
+
+# Skip fixup/squash commits
+if echo "$COMMIT_MSG" | grep -qE "^(fixup|squash)! "; then
+  exit 0
+fi
+
+# Skip amend with no message change (empty file)
+if [ -z "$COMMIT_MSG" ]; then
+  exit 0
+fi
+
+# Validate Conventional Commits format
+PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\([a-z0-9_/-]+\))?(!)?: .{1,72}$'
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+  echo "" >&2
+  echo "ERROR: Commit message does not follow Conventional Commits format." >&2
+  echo "" >&2
+  echo "Expected: type(scope): description" >&2
+  echo "" >&2
+  echo "  Types:  feat fix docs style refactor test chore ci perf build" >&2
+  echo "  Scope:  optional, lowercase (e.g., code-memory, frontend)" >&2
+  echo "  Desc:   max 72 chars, starts with lowercase" >&2
+  echo "" >&2
+  echo "Examples:" >&2
+  echo "  feat(code-memory): add cross-file reference tracking" >&2
+  echo "  fix: resolve race condition in task-move" >&2
+  echo "  chore(deps): update vitest to v3" >&2
+  echo "" >&2
+  echo "Your message: $COMMIT_MSG" >&2
+  echo "" >&2
+  exit 1
+fi
+
+# Warn if on a task branch without Task footer
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if echo "$BRANCH" | grep -qE "^task/TASK-[0-9a-f]{8}-[0-9a-f]{4}$"; then
+  TASK_ID=$(echo "$BRANCH" | sed 's|^task/||')
+  if ! grep -qE "^Task: TASK-[0-9a-f]{8}-[0-9a-f]{4}$" "$COMMIT_MSG_FILE"; then
+    echo "" >&2
+    echo "WARNING: On task branch $BRANCH but no Task footer found." >&2
+    echo "Consider adding to your commit message:" >&2
+    echo "" >&2
+    echo "  Task: $TASK_ID" >&2
+    echo "" >&2
+    # Warning only — do not reject
+  fi
+fi

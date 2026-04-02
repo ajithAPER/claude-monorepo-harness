@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Managed by claude-monorepo-harness hooks-install.sh — do not edit directly
+# Pre-commit checks: secret detection, whitespace, large files.
+set -euo pipefail
+
+ERRORS=0
+
+# Get staged files (Added, Copied, Modified — skip Deleted)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+# --- Secret Detection ---
+
+# Check for .env files (not .env.example)
+ENV_FILES=$(echo "$STAGED_FILES" | grep -E '(^|/)\.env(\.[^e]|$)' | grep -v '\.env\.example' || true)
+if [ -n "$ENV_FILES" ]; then
+  echo "ERROR: Staged .env file(s) detected — these likely contain secrets:" >&2
+  echo "$ENV_FILES" | sed 's/^/  /' >&2
+  echo "" >&2
+  ERRORS=1
+fi
+
+# Check for key/certificate files
+KEY_FILES=$(echo "$STAGED_FILES" | grep -iE '\.(pem|key|p12|pfx|jks|keystore)$' || true)
+if [ -n "$KEY_FILES" ]; then
+  echo "ERROR: Staged private key/certificate file(s) detected:" >&2
+  echo "$KEY_FILES" | sed 's/^/  /' >&2
+  echo "" >&2
+  ERRORS=1
+fi
+
+# Check for credential-like filenames
+CRED_FILES=$(echo "$STAGED_FILES" | grep -iE '(^|/)credentials|secrets?\.(json|yaml|yml|toml|xml|ini|cfg)$' || true)
+if [ -n "$CRED_FILES" ]; then
+  echo "ERROR: Staged credential/secret file(s) detected:" >&2
+  echo "$CRED_FILES" | sed 's/^/  /' >&2
+  echo "" >&2
+  ERRORS=1
+fi
+
+# Scan staged file contents for secret patterns
+SECRET_PATTERN='(API_KEY|SECRET_KEY|PRIVATE_KEY|ACCESS_TOKEN|AUTH_TOKEN|PASSWORD)\s*[=:]\s*["\x27]?[A-Za-z0-9+/=_-]{8,}'
+SECRETS_FOUND=$(git diff --cached -U0 --diff-filter=ACM | grep -E "^\+" | grep -vE "^\+\+\+" | grep -iE "$SECRET_PATTERN" || true)
+if [ -n "$SECRETS_FOUND" ]; then
+  echo "WARNING: Possible secrets found in staged changes:" >&2
+  echo "$SECRETS_FOUND" | head -5 | sed 's/^/  /' >&2
+  echo "" >&2
+  echo "If these are false positives, commit with --no-verify." >&2
+  echo "" >&2
+  ERRORS=1
+fi
+
+# --- Whitespace Check ---
+
+if ! git diff --cached --check >/dev/null 2>&1; then
+  echo "WARNING: Whitespace issues detected in staged files." >&2
+  git diff --cached --check 2>&1 | head -10 | sed 's/^/  /' >&2
+  echo "" >&2
+  # Warning only — don't block on whitespace
+fi
+
+# --- Large File Check ---
+
+for FILE in $STAGED_FILES; do
+  if [ -f "$FILE" ]; then
+    FILE_SIZE=$(wc -c < "$FILE" 2>/dev/null | tr -d ' ')
+    if [ "$FILE_SIZE" -gt 1048576 ]; then
+      SIZE_MB=$(echo "scale=1; $FILE_SIZE / 1048576" | bc 2>/dev/null || echo "?")
+      echo "WARNING: Large file staged: $FILE (${SIZE_MB}MB)" >&2
+      echo "  Consider using Git LFS for files > 1MB." >&2
+      echo "" >&2
+      # Warning only — don't block
+    fi
+  fi
+done
+
+if [ "$ERRORS" -ne 0 ]; then
+  echo "Pre-commit checks failed. Use --no-verify to bypass." >&2
+  exit 1
+fi

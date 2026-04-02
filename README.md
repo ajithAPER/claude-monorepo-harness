@@ -1,0 +1,1 @@
+# claude-monorepo-harness

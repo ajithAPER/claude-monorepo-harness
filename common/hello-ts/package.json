@@ -1,0 +1,16 @@
+{
+  "name": "@common/hello-ts",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsgo",
+    "check": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@common/typescript-config": "workspace:^"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "claude-monorepo-harness",
+  "version": "0.0.1",
+  "description": "A monorepo harness for Claude Code",
+  "author": "Claude Code",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "yarn@4.12.0",
+  "workspaces": [
+    "tools/*",
+    "common/*",
+    "products/*/apps/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -Apt run build",
+    "check": "yarn workspaces foreach -Apt run check",
+    "test": "yarn workspaces foreach -Apt run test",
+    "constraints": "yarn constraints",
+    "constraints:fix": "yarn constraints --fix"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "latest",
+    "@yarnpkg/types": "^4.0.1",
+    "vitest": "^3.1.1"
+  }
+}
