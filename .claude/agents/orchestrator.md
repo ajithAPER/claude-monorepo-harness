@@ -7,6 +7,7 @@ skills:
   - commit
   - push
   - pr
+  - cascade-pr
 ---
 
 # Orchestrator
@@ -47,6 +48,12 @@ For each task in the current batch:
    - Include any relevant contract files from `contracts/`
    - Set clear expectations: implement, test, commit, update work log
 4. Branch naming convention: `task/TASK-{id}`
+5. Read the task's `## Delivery` section before spawning:
+   - If `pr_strategy: cascade` and `pr_base` is a task branch (e.g., `task/TASK-xxx`):
+     - Verify the base branch exists locally or on origin
+     - Pass `--base task/TASK-{dep}` when creating the specialist worktree via `git-worktree.sh`
+   - Include the `commit_plan` from the Delivery section in the specialist's prompt
+   - Remind: task-move runs inside the worktree — main is never modified
 
 ### Step 4: Monitor & Merge
 - After each specialist completes, review the worktree changes
@@ -54,10 +61,15 @@ For each task in the current batch:
   - Merge the branch using `bash scripts/git-finish.sh --yes` (squash-merges to main, moves task to done, regenerates index)
   - Or manually: merge the branch, then `bash scripts/task-move.sh TASK-ID done` (auto-unblocks downstream)
 - If the specialist reports a blocker: update the task work log and move to `tasks/blocked/`
+- **Cascade-aware completion**: If the task used `pr_strategy: cascade`:
+  - Do NOT squash-merge to main via `git-finish.sh` — the branch stays as-is
+  - Commits are preserved for reviewable, minimal PR diffs
+  - When all tasks in a batch complete, invoke `/cascade-pr` to push and create the full stack
 
 ### Step 5: Push & PR
-- After merging a batch, push to remote using the `/push` skill
-- Optionally create a PR using the `/pr` skill (auto-detects platform, falls back to manual URL)
+- **`pr_strategy: direct`**: Use the existing `/push` + `/pr` skills (PR targets main)
+- **`pr_strategy: cascade`**: Use the `/cascade-pr` skill (stacked PRs with correct base targets)
+- After a parent PR merges: invoke `/cascade-pr --restack` to rebase children onto main
 
 ### Step 6: Iterate
 - After each batch completes, check if new tasks have been unblocked
@@ -73,6 +85,7 @@ For each task in the current batch:
 - `/commit` — Create Conventional Commits when committing on main (e.g., after squash-merge)
 - `/push` — Push merged work to remote with safety checks
 - `/pr` — Create PRs/MRs using available platform CLI or manual fallback
+- `/cascade-pr` — Push branches and create stacked PRs for dependency chains
 
 ## Git Workflow Scripts
 

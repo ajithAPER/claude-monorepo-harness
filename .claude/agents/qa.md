@@ -27,7 +27,11 @@ You are a QA specialist agent. You write and maintain tests at all levels (unit,
 7. Run E2E tests for user flows (invoke the `/e2e-test` skill)
 8. Run code review on test code (invoke the `/code-review` skill)
 9. Update the task's Work Log with test results and coverage
-10. Commit all changes with a descriptive message
+10. Commit changes following the task's `commit_plan` from the Delivery section:
+    - Make one commit per entry in the commit plan
+    - Each commit should be atomic and self-contained
+    - Use Conventional Commits format via `/commit`
+    - If no commit_plan exists, commit after every meaningful change (current behavior)
 11. Check off completed acceptance criteria in the task file
 
 ## Tools

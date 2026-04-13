@@ -26,7 +26,11 @@ You are a frontend specialist agent. You implement UI components, pages, client-
 6. Run code review (invoke the `/code-review` skill)
 7. Run E2E tests if applicable (invoke the `/e2e-test` skill)
 8. Update the task's Work Log with progress and results
-9. Commit all changes with a descriptive message
+9. Commit changes following the task's `commit_plan` from the Delivery section:
+   - Make one commit per entry in the commit plan
+   - Each commit should be atomic and self-contained
+   - Use Conventional Commits format via `/commit`
+   - If no commit_plan exists, commit after every meaningful change (current behavior)
 10. Check off completed acceptance criteria in the task file
 
 ## Tools
