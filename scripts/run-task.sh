@@ -175,37 +175,16 @@ fi
 if ! $SKIP_BRANCHOUT; then
   info "Creating worktree for $TASK_ID (base: $PR_BASE)..."
 
-  # Build git-worktree.sh call
-  WORKTREE_ARGS=("add" "$TASK_ID")
+  # Build git-worktree.sh call with --base and --dir flags
+  WORKTREE_CMD=("bash" "$SCRIPT_DIR/git-worktree.sh" "add" "$TASK_ID")
   if [ -n "$WORKTREE_DIR" ]; then
-    WORKTREE_ARGS+=("--dir" "$WORKTREE_DIR")
+    WORKTREE_CMD+=("--dir" "$WORKTREE_DIR")
+  fi
+  if [ "$PR_BASE" != "main" ]; then
+    WORKTREE_CMD+=("--base" "$PR_BASE")
   fi
 
-  # Check if git-worktree.sh supports --base; if not, pass base via env or handle here
-  # Since git-worktree.sh doesn't support --base yet, we create the worktree directly.
-  # Determine base ref: prefer origin/<pr_base> if it exists, else local <pr_base>
-  if git -C "$REPO_ROOT" rev-parse --verify "origin/${PR_BASE}" >/dev/null 2>&1; then
-    BASE_REF="origin/${PR_BASE}"
-  elif git -C "$REPO_ROOT" rev-parse --verify "${PR_BASE}" >/dev/null 2>&1; then
-    BASE_REF="$PR_BASE"
-  else
-    warn "Base ref '$PR_BASE' not found locally or on origin. Falling back to origin/main."
-    if git -C "$REPO_ROOT" rev-parse --verify "origin/main" >/dev/null 2>&1; then
-      BASE_REF="origin/main"
-    else
-      BASE_REF="main"
-    fi
-  fi
-
-  mkdir -p "$EFFECTIVE_WORKTREE_DIR"
-
-  # Fetch the base ref
-  info "Fetching ${PR_BASE}..."
-  git -C "$REPO_ROOT" fetch origin "${PR_BASE}" 2>/dev/null || {
-    warn "Could not fetch origin/${PR_BASE}. Using local ref."
-  }
-
-  git -C "$REPO_ROOT" worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" "$BASE_REF"
+  "${WORKTREE_CMD[@]}"
   success "Worktree created: $WORKTREE_PATH"
 
   # Move task to active inside the worktree and commit

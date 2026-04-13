@@ -85,14 +85,18 @@ All bash-native, no external dependencies:
 - `scripts/task-validate-links.sh` — Check link consistency and dependency symmetry
 
 ### Git Workflow
-- `scripts/git-branch.sh TASK-ID` — Create task branch from main (`task/TASK-{id}`)
+- `scripts/git-branch.sh TASK-ID [--base REF]` — Create task branch (`task/TASK-{id}`), optionally from a custom base
 - `scripts/git-branch.sh --type hotfix|chore|release NAME` — Create typed branch
 - `scripts/git-sync.sh [--stash]` — Rebase current branch onto latest main
 - `scripts/git-commit.sh TYPE [SCOPE] DESCRIPTION` — Create Conventional Commit
 - `scripts/git-push.sh [--force]` — Push with safety checks (blocks force-push to protected branches)
 - `scripts/git-finish.sh [--yes] [--no-task-update]` — Squash-merge to main, cleanup, task lifecycle
-- `scripts/git-worktree.sh add|list|remove TASK-ID` — Manage worktrees for parallel agents
+- `scripts/git-worktree.sh add|list|remove TASK-ID [--base REF] [--dir PATH]` — Manage worktrees for parallel agents
+- `scripts/git-restack.sh TASK-ID [--onto REF]` — Rebase stacked branch after parent PR merges
 - `scripts/git-platform.sh detect|pr-url` — Detect hosting platform, generate PR URLs
+
+### Task Execution
+- `scripts/run-task.sh TASK-ID [--dir PATH] [--skip-branchout] [--dry-run]` — Execute task in isolated worktree via orchestrator
 
 ### Git Hooks
 - `scripts/hooks-install.sh [--uninstall]` — Install/uninstall git hooks
@@ -113,8 +117,10 @@ All bash-native, no external dependencies:
 - `/doc-gen` — Generate/update README and API documentation
 - `/code-memory` — Query codebase knowledge graph
 - `/commit` — Create a Conventional Commit with task context
+- `/commit-tasks` — Commit only task/contract/context files after planning
 - `/push` — Push current branch with safety checks
 - `/pr` — Create PR/MR (auto-detects platform, falls back to manual)
+- `/cascade-pr` — Push branches and create stacked PRs for dependency chains
 
 ## Agent Swarm Architecture
 
@@ -146,6 +152,37 @@ Agent definitions live in `.claude/agents/`. See `context/decisions.md` for arch
 | `tooling`, `dx`, `scripts`, `skills` | devex |
 | `ci`, `cd`, `docker`, `deploy`, `infra` | devops |
 | `testing`, `qa`, `integration`, `e2e` | qa |
+
+## Task Execution
+
+Run a task in an isolated worktree:
+```bash
+pnpm run task:execute -- TASK-ID                    # default: worktree mode
+pnpm run task:execute -- TASK-ID --dir /tmp/work    # custom worktree directory
+pnpm run task:execute -- TASK-ID --skip-branchout   # run on current branch
+pnpm run task:execute -- TASK-ID --dry-run          # validate only
+```
+
+The script creates a worktree, moves the task to active (inside the worktree — main is never modified), and launches the orchestrator agent.
+
+## Stacked PR Workflow
+
+Tasks include a `## Delivery` section with `pr_base`, `pr_strategy`, and `commit_plan` fields.
+
+| Dependency pattern | pr_base | pr_strategy |
+|---|---|---|
+| No `depends_on` | `main` | `direct` |
+| Single `depends_on` | `task/TASK-{dep}` | `cascade` |
+| Multiple `depends_on` | `main` | `direct` |
+
+**Cascade flow:** TASK-B depends on TASK-A → B's branch forks from A's branch → B's PR targets A's branch (not main). After A merges, run `/cascade-pr --restack` to rebase B onto main.
+
+```
+main ───────────────────────────
+  ├── task/TASK-A  ──→ PR→main
+  │     └── task/TASK-B ──→ PR→task/TASK-A
+  └── task/TASK-C  ──→ PR→main
+```
 
 ## Multi-Product Structure
 
