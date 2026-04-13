@@ -14,9 +14,9 @@ TASK_ID_PATTERN='^TASK-[0-9a-f]{8}-[0-9a-f]{4}$'
 
 usage() {
   echo "Usage:" >&2
-  echo "  $0 add TASK-ID      Create worktree for task" >&2
-  echo "  $0 list             List active worktrees" >&2
-  echo "  $0 remove TASK-ID   Remove task worktree" >&2
+  echo "  $0 add TASK-ID [--base REF] [--dir PATH]  Create worktree for task" >&2
+  echo "  $0 list                                    List active worktrees" >&2
+  echo "  $0 remove TASK-ID                          Remove task worktree" >&2
   exit 1
 }
 
@@ -42,10 +42,29 @@ check_git_version() {
 case "$COMMAND" in
   add)
     if [ $# -lt 2 ]; then
-      echo "Usage: $0 add TASK-ID" >&2
+      echo "Usage: $0 add TASK-ID [--base REF] [--dir PATH]" >&2
       exit 1
     fi
     TASK_ID="$2"
+    shift 2  # past "add" and TASK_ID
+
+    CUSTOM_BASE=""
+    CUSTOM_DIR=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --base)
+          [ $# -lt 2 ] && { echo "Error: --base requires a REF argument" >&2; exit 1; }
+          CUSTOM_BASE="$2"
+          shift 2
+          ;;
+        --dir)
+          [ $# -lt 2 ] && { echo "Error: --dir requires a PATH argument" >&2; exit 1; }
+          CUSTOM_DIR="$2"
+          shift 2
+          ;;
+        *) echo "Error: Unknown option: $1" >&2; exit 1 ;;
+      esac
+    done
 
     if ! echo "$TASK_ID" | grep -qE "$TASK_ID_PATTERN"; then
       echo "Error: '$TASK_ID' doesn't match task ID format (TASK-{8hex}-{4hex})" >&2
@@ -60,7 +79,7 @@ case "$COMMAND" in
     fi
 
     BRANCH_NAME="task/${TASK_ID}"
-    WORKTREE_PATH="$WORKTREES_DIR/$TASK_ID"
+    WORKTREE_PATH="${CUSTOM_DIR:-$WORKTREES_DIR}/$TASK_ID"
 
     if [ -d "$WORKTREE_PATH" ]; then
       echo "Error: Worktree already exists at $WORKTREE_PATH" >&2
@@ -74,20 +93,33 @@ case "$COMMAND" in
       exit 1
     fi
 
-    # Fetch latest main
-    echo "Fetching latest main..."
-    git -C "$REPO_ROOT" fetch origin main 2>/dev/null || {
-      echo "Warning: Could not fetch origin/main. Using local main." >&2
-    }
-
     # Determine base ref
-    if git -C "$REPO_ROOT" rev-parse --verify origin/main >/dev/null 2>&1; then
-      BASE_REF="origin/main"
+    if [ -n "$CUSTOM_BASE" ]; then
+      # Validate and resolve custom base
+      echo "Using custom base: $CUSTOM_BASE"
+      git -C "$REPO_ROOT" fetch origin "$CUSTOM_BASE" 2>/dev/null || true
+      if git -C "$REPO_ROOT" rev-parse --verify "origin/${CUSTOM_BASE}" >/dev/null 2>&1; then
+        BASE_REF="origin/${CUSTOM_BASE}"
+      elif git -C "$REPO_ROOT" rev-parse --verify "${CUSTOM_BASE}" >/dev/null 2>&1; then
+        BASE_REF="$CUSTOM_BASE"
+      else
+        echo "Error: Base ref '$CUSTOM_BASE' not found locally or on origin" >&2
+        exit 1
+      fi
     else
-      BASE_REF="main"
+      # Original logic: fetch and use origin/main
+      echo "Fetching latest main..."
+      git -C "$REPO_ROOT" fetch origin main 2>/dev/null || {
+        echo "Warning: Could not fetch origin/main. Using local main." >&2
+      }
+      if git -C "$REPO_ROOT" rev-parse --verify origin/main >/dev/null 2>&1; then
+        BASE_REF="origin/main"
+      else
+        BASE_REF="main"
+      fi
     fi
 
-    mkdir -p "$WORKTREES_DIR"
+    mkdir -p "${CUSTOM_DIR:-$WORKTREES_DIR}"
 
     # Create worktree with new branch
     git -C "$REPO_ROOT" worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" "$BASE_REF"

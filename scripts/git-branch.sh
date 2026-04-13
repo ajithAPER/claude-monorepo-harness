@@ -18,7 +18,7 @@ TASK_ID_PATTERN='^TASK-[0-9a-f]{8}-[0-9a-f]{4}$'
 
 usage() {
   echo "Usage:" >&2
-  echo "  $0 TASK-ID                        Create task/TASK-{id} branch" >&2
+  echo "  $0 TASK-ID [--base REF]              Create task/TASK-{id} branch" >&2
   echo "  $0 --type hotfix|chore|release NAME  Create type/NAME branch" >&2
   exit 1
 }
@@ -28,6 +28,7 @@ if [ $# -lt 1 ]; then
 fi
 
 # Parse arguments
+CUSTOM_BASE=""
 if [ "$1" = "--type" ]; then
   if [ $# -lt 3 ]; then
     usage
@@ -43,6 +44,7 @@ if [ "$1" = "--type" ]; then
   FULL_BRANCH="${BRANCH_TYPE}/${BRANCH_NAME}"
 else
   TASK_ID="$1"
+  shift  # past TASK_ID
 
   if ! echo "$TASK_ID" | grep -qE "$TASK_ID_PATTERN"; then
     echo "Error: '$TASK_ID' doesn't match task ID format (TASK-{8hex}-{4hex})" >&2
@@ -57,6 +59,17 @@ else
   fi
 
   FULL_BRANCH="task/${TASK_ID}"
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --base)
+        [ $# -lt 2 ] && { echo "Error: --base requires a REF argument" >&2; exit 1; }
+        CUSTOM_BASE="$2"
+        shift 2
+        ;;
+      *) echo "Error: Unknown option: $1" >&2; exit 1 ;;
+    esac
+  done
 fi
 
 # Check for clean working tree
@@ -72,17 +85,30 @@ if git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$FULL_BRANCH" 2>/de
   exit 1
 fi
 
-# Fetch latest main
-echo "Fetching latest main..."
-git -C "$REPO_ROOT" fetch origin main 2>/dev/null || {
-  echo "Warning: Could not fetch origin/main. Creating branch from local main." >&2
-}
-
 # Determine base ref
-if git -C "$REPO_ROOT" rev-parse --verify origin/main >/dev/null 2>&1; then
-  BASE_REF="origin/main"
+if [ -n "${CUSTOM_BASE:-}" ]; then
+  echo "Using custom base: $CUSTOM_BASE"
+  git -C "$REPO_ROOT" fetch origin "$CUSTOM_BASE" 2>/dev/null || true
+  if git -C "$REPO_ROOT" rev-parse --verify "origin/${CUSTOM_BASE}" >/dev/null 2>&1; then
+    BASE_REF="origin/${CUSTOM_BASE}"
+  elif git -C "$REPO_ROOT" rev-parse --verify "${CUSTOM_BASE}" >/dev/null 2>&1; then
+    BASE_REF="$CUSTOM_BASE"
+  else
+    echo "Error: Base ref '$CUSTOM_BASE' not found" >&2
+    exit 1
+  fi
 else
-  BASE_REF="main"
+  # Fetch latest main
+  echo "Fetching latest main..."
+  git -C "$REPO_ROOT" fetch origin main 2>/dev/null || {
+    echo "Warning: Could not fetch origin/main. Creating branch from local main." >&2
+  }
+  # Determine base ref
+  if git -C "$REPO_ROOT" rev-parse --verify origin/main >/dev/null 2>&1; then
+    BASE_REF="origin/main"
+  else
+    BASE_REF="main"
+  fi
 fi
 
 # Create and switch to branch
