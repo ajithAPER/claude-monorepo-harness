@@ -31,14 +31,19 @@ Key sections: Objective, Scope (Owns/Reads), Contracts (Consumes/Publishes), Acc
 
 ### Task Lifecycle
 ```
-task-plan creates tasks
-  → Has unmet depends_on? → tasks/blocked/
-  → No dependencies?      → tasks/backlog/
+task-plan writes plan      → .plan/session.md (draft)
+  → User iterates on plan
+  → User approves          → plan-apply materializes tasks
+  → Has unmet depends_on?  → tasks/blocked/
+  → No dependencies?       → tasks/backlog/
 
-Agent starts work         → tasks/active/
-Work complete             → tasks/done/
+Agent starts work          → tasks/active/
+Work complete              → tasks/done/
   → Auto-unblocks downstream tasks whose depends_on are all in done/
 ```
+
+### Plan-First Workflow
+The `/task-plan` skill generates a unique plan ID (`bash scripts/plan-id.sh`) and pre-generates all task IDs (`bash scripts/task-id.sh`), then writes the plan to `.plan/{PLAN-ID}.md` (git-ignored). The user reviews, iterates, and approves. On approval, `/plan-apply` materializes the plan into task files reusing the exact IDs from the plan — never regenerated. The `.plan/` directory is session-scoped and resumable — if a planning session is interrupted, the next session detects the draft and offers to resume.
 
 ## Session Protocol
 
@@ -83,6 +88,7 @@ All bash-native, no external dependencies:
 - `scripts/task-move.sh TASK-ID STATUS` — Move task between status dirs (auto-unblocks)
 - `scripts/task-index.sh` — Regenerate tasks/INDEX.md
 - `scripts/task-validate-links.sh` — Check link consistency and dependency symmetry
+- `scripts/plan-id.sh` — Generate unique plan ID (`PLAN-{hex_epoch}-{4_hex_random}`)
 
 ### Git Workflow
 - `scripts/git-branch.sh TASK-ID [--base REF]` — Create task branch (`task/TASK-{id}`), optionally from a custom base
@@ -109,7 +115,8 @@ All bash-native, no external dependencies:
 - `/task-update` — Update task status, move between dirs
 - `/task-list` — Show project status, suggest next task
 - `/requirements` — Structured requirement gathering before task planning
-- `/task-plan` — Decompose an epic into agent-assignable tasks
+- `/task-plan` — Decompose an epic into agent-assignable tasks (plan-first: writes `.plan/session.md` for review)
+- `/plan-apply` — Materialize an approved plan into task files and contracts
 - `/tdd` — Red-Green-Refactor with isolated subagents per phase
 - `/code-review` — Review changes against acceptance criteria and contracts
 - `/integration-test` — Test contract boundaries between modules

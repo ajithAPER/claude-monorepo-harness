@@ -1,25 +1,58 @@
 #!/usr/bin/env bash
 # Validate all [[TASK-id]] wikilinks and check dependency symmetry.
 # Reports broken links and asymmetric depends_on/blocks relationships.
+# References from done/ tasks to missing tasks are warnings, not errors.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TASKS_ROOT="$REPO_ROOT/tasks"
 ERRORS=0
+WARNINGS=0
 
 echo "Validating task links..."
 
-# 1. Check all [[TASK-*]] references resolve to existing files
-REFS=$(grep -rhoE 'TASK-[0-9a-f]{8}-[0-9a-f]{4}' "$TASKS_ROOT" 2>/dev/null | sort -u || true)
+# Helper: determine status directory of a file
+status_dir() {
+  basename "$(dirname "$1")"
+}
 
-for REF in $REFS; do
+# 1. Check all [[TASK-*]] references resolve to existing files
+# Build unique (source, ref) pairs using a temp file for dedup
+SEEN_PAIRS_FILE=$(mktemp)
+trap "rm -f '$SEEN_PAIRS_FILE'" EXIT
+
+while IFS= read -r line; do
+  # Line format: /path/to/TASK-xxx.md:[[TASK-yyy]]
+  # Extract source file (everything before :[[)
+  SRC_FILE="${line%%:\[\[*}"
+  # Extract referenced TASK ID from the [[...]] bracket
+  REF=$(echo "${line#*:}" | grep -oE 'TASK-[0-9a-f]{8}-[0-9a-f]{4}' | head -1)
+  [ -z "$REF" ] && continue
+
+  # Skip self-references
+  SRC_ID=$(basename "$SRC_FILE" .md)
+  [ "$REF" = "$SRC_ID" ] && continue
+
+  # Deduplicate
+  PAIR="${SRC_ID}:${REF}"
+  if grep -qxF "$PAIR" "$SEEN_PAIRS_FILE" 2>/dev/null; then
+    continue
+  fi
+  echo "$PAIR" >> "$SEEN_PAIRS_FILE"
+
   FOUND=$(find "$TASKS_ROOT" -name "${REF}.md" -type f 2>/dev/null | head -1)
   if [ -z "$FOUND" ]; then
-    echo "BROKEN LINK: [[${REF}]] referenced but no file found" >&2
-    ERRORS=$((ERRORS + 1))
+    SRC_STATUS=$(status_dir "$SRC_FILE")
+    if [ "$SRC_STATUS" = "done" ]; then
+      echo "WARNING: [[${REF}]] referenced from done task ${SRC_ID} but no file found" >&2
+      WARNINGS=$((WARNINGS + 1))
+    else
+      echo "BROKEN LINK: [[${REF}]] referenced from ${SRC_ID} but no file found" >&2
+      ERRORS=$((ERRORS + 1))
+    fi
   fi
-done
+done < <(grep -rHo '\[\[TASK-[0-9a-f]\{8\}-[0-9a-f]\{4\}\]\]' "$TASKS_ROOT" --include="*.md" 2>/dev/null || true)
 
 # 2. Check depends_on/blocks symmetry
 TASK_FILES=$(find "$TASKS_ROOT" -name "TASK-*.md" -type f 2>/dev/null || true)
@@ -75,9 +108,12 @@ for FILE in $TASK_FILES; do
   done < "$FILE"
 done
 
-if [ $ERRORS -eq 0 ]; then
+# Summary
+if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
   echo "All links valid. No issues found."
+elif [ $ERRORS -eq 0 ]; then
+  echo "${WARNINGS} warning(s), 0 errors. Links are valid (warnings are non-blocking)."
 else
-  echo "${ERRORS} issue(s) found." >&2
+  echo "${ERRORS} error(s), ${WARNINGS} warning(s) found." >&2
   exit 1
 fi

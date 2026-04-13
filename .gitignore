@@ -32,5 +32,8 @@ coverage/
 # Worktrees (parallel agent execution)
 .worktrees/
 
+# Planning session cache
+.plan/
+
 # Logs
 *.log
