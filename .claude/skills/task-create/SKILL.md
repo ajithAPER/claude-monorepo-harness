@@ -81,6 +81,13 @@ session_estimate: {session_estimate}
 ## Context
 {key decisions, prior art, gotchas}
 
+## Delivery
+- **pr_base**: main
+- **pr_strategy**: direct
+- **commit_plan**:
+  1. {describe first logical commit}
+  2. {describe second logical commit}
+
 ## Work Log
 <!-- Agents append session notes here -->
 <!-- Format: ### YYYY-MM-DD HH:MM — agent-name -->

@@ -29,6 +29,11 @@ user-invocable: true
    - Define `Scope.Reads` — files this task reads but must not modify
    - **Verify no file overlap**: Two tasks must NEVER have overlapping `Owns` entries
    - Size each task for a single session (`session_estimate: 1`)
+   - **Assign delivery strategy** based on dependencies:
+     - No `depends_on` → `pr_base: main`, `pr_strategy: direct`
+     - Single `depends_on` → `pr_base: task/TASK-{dep}`, `pr_strategy: cascade`
+     - Multiple `depends_on` → `pr_base: main`, `pr_strategy: direct` (must wait for all deps to merge first)
+   - Always populate `commit_plan` with 2–4 logical steps matching acceptance criteria
 
 5. **Define contracts at boundaries**: Where one task produces something another consumes:
    - Write a contract in the Publishes/Consumes sections
@@ -42,7 +47,7 @@ user-invocable: true
    - Independent tasks can run in parallel
    - Always create a final integration/QA task that depends on all implementation tasks
 
-7. **Create all task files**: Use the full template from `/task-create` for each.
+7. **Create all task files**: Use the full template from `/task-create` for each. Ensure the `## Delivery` section is populated with the correct `pr_base`, `pr_strategy`, and `commit_plan` as determined in Step 4.
 
 8. **Regenerate and validate**:
    ```bash
