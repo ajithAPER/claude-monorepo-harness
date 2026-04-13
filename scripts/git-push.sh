@@ -56,7 +56,7 @@ if $FORCE; then
 fi
 
 # Push
-git -C "$REPO_ROOT" push "${PUSH_ARGS[@]}" origin "$BRANCH"
+git -C "$REPO_ROOT" push ${PUSH_ARGS[@]+"${PUSH_ARGS[@]}"} origin "$BRANCH"
 
 # Report
 AHEAD=$(git -C "$REPO_ROOT" rev-list --count "origin/$BRANCH..HEAD" 2>/dev/null || echo "0")
